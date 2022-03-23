@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: ./deploy/docker/nginx/Dockerfile
+      args:
+        PHP_FPM_SERVER: app
+        PHP_FPM_PORT: 9000
+    ports:
+      - ${DOCKER_NGINX_EXTERNAL_PORT-8000}:80
+    depends_on:
+      - app
+    links:
+      - app
+
+  app:
+    build:
+      context: .
+      dockerfile: ./deploy/docker/php/Dockerfile
+    environment:
+      APP_ENV: local
+    volumes:
+      - ./src:/var/www/html
+      - ./deploy/docker/php/php.ini:/usr/local/etc/php/conf.d/php.ini
+    links:
+      - db
+
+  db:
+    image: mysql:8.0
+    volumes:
+      - mysqldata:/var/lib/mysql
+      - ./deploy/docker/mysql/mysql-db-test.sql:/docker-entrypoint-initdb.d/mysql-database-test.sql
+    environment:
+      MYSQL_DATABASE: app_db
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+    ports:
+      - ${DOCKER_MYSQL_EXTERNAL_PORT-3306}:3306
+    command: [ 'mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci' ]
+volumes:
+  mysqldata:
+
